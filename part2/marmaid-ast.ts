@@ -35,7 +35,7 @@ export interface LR {tag: "LR";}
 // export interface graphContent {tag:}
 export interface AtomicGraph {tag: "AtomicGraph"; content: NodeDecl;}
 export interface CompoundGraph {tag: "CompoundGraph"; edges: Edge[];}
-export interface Edge {tag: "Edge"; from: Node; to: Node; label?: string;}
+export interface Edge {tag: "Edge"; from: Node; to: Node; label?: EdgeLabel;}
 export interface NodeDecl {tag: "NodeDecl"; id: string; label: string}
 export interface NodeRef {tag: "NodeRef"; id: string}
 export interface EdgeLabel {tag: "EdgeLabel"; var: string}
@@ -47,7 +47,7 @@ export const makeTD = (): TD => ({tag: "TD"});
 export const makeLR = (): LR => ({tag: "LR"});
 export const makeAtomicGraph = (content: NodeDecl): AtomicGraph => ({tag: "AtomicGraph", content: content});
 export const makeCompoundGraph = (edges: Edge[]): CompoundGraph => ({tag: "CompoundGraph", edges: edges});
-export const makeEdge = (from: Node, to: Node, label?: string): Edge => ({tag: "Edge", from: from, to: to, label: label});
+export const makeEdge = (from: Node, to: Node, label?: EdgeLabel): Edge => ({tag: "Edge", from: from, to: to, label: label});
 export const makeNodeDecl = (id: string, label: string): NodeDecl => ({tag: "NodeDecl", id: id, label: label});
 export const makeNodeRef = (id: string): NodeRef => ({tag: "NodeRef", id: id});
 export const makeEdgeLabel = (label: string): EdgeLabel => ({tag: "EdgeLabel", var: "|"+label+"|"});
