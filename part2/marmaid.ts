@@ -9,9 +9,10 @@ import { makeEmptySExp, makeSymbolSExp, SExpValue, makeCompoundSExp, valueToStri
 import {Parsed,isBoolExp,isNumExp,isStrExp,isLitExp,isVarRef,isProcExp,isIfExp,
     isAppExp,isPrimOp,isLetExp,isLetrecExp,isSetExp,isDefineExp,
     isProgram, isVarDecl, isAtomicExp, Exp, AppExp, IfExp, ProcExp, DefineExp,
-    CompoundExp,isCompoundExp, CExp, AtomicExp, LitExp, SetExp} from './L4-ast'
+    CompoundExp,isCompoundExp, CExp, AtomicExp, LitExp, SetExp, LetrecExp, Binding} from './L4-ast'
 import {Graph,Node, makeEdge, makeNodeRef,makeNodeDecl, isEdge, makeGraph, makeTD,
     GraphContent, makeAtomicGraph, Edge, CompoundGraph, makeCompoundGraph, makeEdgeLabel, NodeDecl, NodeRef} from './marmaid-ast'
+import { LetExp } from "../part3/L4-ast";
 
 export const makeVarGen = (): (v: string) => string => {
     let count: number = 0;
@@ -42,6 +43,8 @@ const varDeclGen = makeVarGen();
 const letGen = makeVarGen();
 const letRecGen = makeVarGen();
 const setGen = makeVarGen();
+const bindingGen = makeVarGen();
+
 
 
 const SexpNumber = makeVarGen();
@@ -61,22 +64,24 @@ makeOk(convertExp(exp));
 
 
 export const convertExp = (exp: Exp, node :Node) : Edge[] =>
-isBoolExp(exp) ? makeNodeDecl("BoolExp(".concat(valueToString (exp.val)).concat(")"),boolGen(exp.tag)) :
-isNumExp(exp) ? makeNodeDecl("NumExp(".concat(valueToString (exp.val)).concat(")"),numGen(exp.tag)) :
-isStrExp(exp) ? makeNodeDecl("StrExp(".concat(valueToString (exp.val)).concat(")"),strGen(exp.tag)) :
+isBoolExp(exp) ? makeEdge(makeNodeRef(node.id),nodeMaker(exp)) :
+isNumExp(exp) ? makeEdge(makeNodeRef(node.id),nodeMaker(exp)) :
+isStrExp(exp) ? makeEdge(makeNodeRef(node.id),nodeMaker(exp)) :
+isPrimOp(exp) ? makeEdge(makeNodeRef(node.id),nodeMaker(exp)) :
+
+
 isLitExp(exp) ? makeNodeRef(litGen(valueToString(exp.val))) :
 isVarRef(exp) ? makeNodeRef(varRefGen(exp.tag)) :
-isPrimOp(exp) ? makeNodeDecl("PrimOp(".concat(valueToString (exp.op)).concat(")"),primOpGen(exp.tag)) :
 
 isProcExp(exp) ? convertProcExp(exp,makeNodeDecl(procExpGen(`${exp.tag}`),`${exp.tag}`)) :
 isIfExp(exp) ? convertIfExp(exp,makeNodeDecl(IfExpGen(`${exp.tag}`),`${exp.tag}`)) :
 isAppExp(exp) ? convertAppExp(exp,makeNodeDecl(AppExpGen(`${exp.tag}`),`${exp.tag}`)) :
-isLetExp(exp) ?  : 
-isLetrecExp(exp) ?  :
-isSetExp(exp) ?  :
-isDefineExp(exp) ?  : convertDefine(exp,makeNodeDecl(AppExpGen(`${exp.tag}`),`${exp.tag}`))
-isProgram(exp) ?  :
-"";
+isLetExp(exp) ? [] : 
+isLetrecExp(exp) ? [] :
+isSetExp(exp) ? [] :
+isDefineExp(exp) ? [] :
+isProgram(exp) ? [] :
+;
 
 
 export const convertAppExp = (exp :AppExp, node: Node): Edge[] => {
@@ -185,6 +190,22 @@ export const convertSetExp = (exp: SetExp, node: Node): Edge[] => {
     makeEdge(makeNodeRef(parentToSetEdge.to.id),makeCompoundNode(exp.val));
     return isAtomicExp(exp.val)? [parentToSetEdge,setToVarEdge,setToValEdge]:
     [parentToSetEdge,setToVarEdge,setToValEdge].concat(convertExp(exp.val,makeNodeRef(setToValEdge.to.id)));
+}
+
+
+export const convertLetExp = (exp : LetExp|LetrecExp , node : Node): Edge[] => {
+    const multiBindingsGen = makeVarGen();
+    const internalBodyGen = makeVarGen();
+    const parentToLetEdge = makeEdge(makeNodeRef(node.id),nodeMaker(exp),makeEdgeLabel(`${exp.tag}`));
+    const letToBindings = makeEdge(makeNodeRef(parentToLetEdge.to.id),makeNodeDecl(bindingGen(`Bindings`),`[:]`),makeEdgeLabel(`bindings`));
+    const letToBodys = makeEdge(makeNodeRef(parentToLetEdge.to.id),makeNodeDecl(bodyGen(`Body`),`[:]`),makeEdgeLabel(`body`));
+    const 
+
+
+}
+
+export const convertBind = (bind : Binding,node :Node) :Edge[] =>{
+    
 }
 
 
