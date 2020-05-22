@@ -1,4 +1,4 @@
-import { map, zipWith, is, reduce, zip } from "ramda";
+import { map, is, reduce, zip, flatten } from "ramda";
 import { Sexp, Token } from "s-expression";
 import { allT, first, second, rest, isEmpty } from "../shared/list";
 import { isArray, isString, isNumericString, isIdentifier, isNumber, isBoolean } from "../shared/type-predicates";
@@ -9,7 +9,7 @@ import { makeEmptySExp, makeSymbolSExp, SExpValue, makeCompoundSExp, valueToStri
 import {Parsed,isBoolExp,isNumExp,isStrExp,isLitExp,isVarRef,isProcExp,isIfExp,
     isAppExp,isPrimOp,isLetExp,isLetrecExp,isSetExp,isDefineExp,
     isProgram, isVarDecl, isAtomicExp, Exp, AppExp, IfExp, ProcExp, DefineExp,
-    CompoundExp,isCompoundExp, CExp, AtomicExp, LitExp, SetExp, LetrecExp, Binding} from './L4-ast'
+    CompoundExp,isCompoundExp, CExp, AtomicExp, LitExp, SetExp, LetrecExp, Binding, isExp, Program} from './L4-ast'
 import {Graph,Node, makeEdge, makeNodeRef,makeNodeDecl, isEdge, makeGraph, makeTD,
     GraphContent, makeAtomicGraph, Edge, CompoundGraph, makeCompoundGraph, makeEdgeLabel, NodeDecl, NodeRef} from './marmaid-ast'
 import { LetExp } from "../part3/L4-ast";
@@ -21,7 +21,7 @@ export const makeVarGen = (): (v: string) => string => {
         return `${v}__${count}`;
     };
 };
-
+const ProgramGen = makeVarGen();
 const AppExpGen = makeVarGen();
 const IfExpGen = makeVarGen();
 const boolGen = makeVarGen();
@@ -59,29 +59,48 @@ const SexpCompound = makeVarGen();
 
 
 export const mapL4toMermaid = (exp: Parsed): Result<Graph>=>
-isProgram(exp) ? makeOk(makeGraph(makeTD(),map(convertExp,exp.exps))):
-makeOk(convertExp(exp));
+isExp(exp) ? isDefineExp(exp) ? makeOk( makeGraph(makeTD(),makeCompoundGraph
+(convertDefine(exp,makeNodeDecl(defineGen(`${exp.tag}`),`${exp.tag}`))))) :
+makeOk( makeGraph(makeTD(),makeAtomicGraph(nodeMaker(exp)))) :
+isProgram(exp) ? makeOk( makeGraph(makeTD(),makeCompoundGraph(convertProgram(exp,makeNodeDecl(ProgramGen(`${exp.tag}`),`${exp.tag}`))))):
+exp;
+
+// isProgram(exp) ? makeOk(makeGraph(makeTD(),map(convertExp,exp.exps))):
+// makeOk(convertExp(exp));
+
+
+
+
+export const convertProgram = (exp : Program, node : Node) : Edge[] =>{
+    const ExpsArrGen = makeVarGen();
+    const TwoDots = map(x=> makeEdge(makeNodeRef(node.id),makeNodeDecl(ExpsArrGen("Exps"),"[:]"),makeEdgeLabel(`exps`)),exp.exps);
+    const bodyExpArr = zip(exp.exps,TwoDots);
+    const allBodies = bodyExpArr.reduce((acc :Edge[] , cur)=>acc.concat(convertExp(cur[0],makeNodeRef(cur[1].to.id))) ,[]);
+
+    return TwoDots.concat(flatten( allBodies));
+}
 
 
 export const convertExp = (exp: Exp, node :Node) : Edge[] =>
-isBoolExp(exp) ? makeEdge(makeNodeRef(node.id),nodeMaker(exp)) :
-isNumExp(exp) ? makeEdge(makeNodeRef(node.id),nodeMaker(exp)) :
-isStrExp(exp) ? makeEdge(makeNodeRef(node.id),nodeMaker(exp)) :
-isPrimOp(exp) ? makeEdge(makeNodeRef(node.id),nodeMaker(exp)) :
+isBoolExp(exp) ? [makeEdge(makeNodeRef(node.id),nodeMaker(exp))] :
+isNumExp(exp) ? [makeEdge(makeNodeRef(node.id),nodeMaker(exp))] :
+isStrExp(exp) ? [makeEdge(makeNodeRef(node.id),nodeMaker(exp))] :
+isPrimOp(exp) ? [makeEdge(makeNodeRef(node.id),nodeMaker(exp))] :
 
+isVarRef(exp) ? [makeEdge(makeNodeRef(node.id),nodeMaker(exp))] :
 
-isLitExp(exp) ? makeNodeRef(litGen(valueToString(exp.val))) :
-isVarRef(exp) ? makeNodeRef(varRefGen(exp.tag)) :
+isLitExp(exp) ? convertLitExp(exp,makeNodeDecl(litGen(`${exp.tag}`),`${exp.tag}`)) :
 
 isProcExp(exp) ? convertProcExp(exp,makeNodeDecl(procExpGen(`${exp.tag}`),`${exp.tag}`)) :
 isIfExp(exp) ? convertIfExp(exp,makeNodeDecl(IfExpGen(`${exp.tag}`),`${exp.tag}`)) :
 isAppExp(exp) ? convertAppExp(exp,makeNodeDecl(AppExpGen(`${exp.tag}`),`${exp.tag}`)) :
-isLetExp(exp) ? [] : 
-isLetrecExp(exp) ? [] :
-isSetExp(exp) ? [] :
-isDefineExp(exp) ? [] :
-isProgram(exp) ? [] :
-;
+isLetExp(exp) ? convertLetExp(exp,makeNodeDecl(letGen(`${exp.tag}`),`${exp.tag}`)) : 
+isLetrecExp(exp) ? convertExp(exp,makeNodeDecl(letRecGen(`${exp.tag}`),`${exp.tag}`)) :
+isSetExp(exp) ? convertSetExp(exp,makeNodeDecl(setGen(`${exp.tag}`),`${exp.tag}`)) :
+isDefineExp(exp) ? convertDefine(exp,makeNodeDecl(defineGen(`${exp.tag}`),`${exp.tag}`)):
+exp;
+
+
 
 
 export const convertAppExp = (exp :AppExp, node: Node): Edge[] => {
@@ -195,34 +214,46 @@ export const convertSetExp = (exp: SetExp, node: Node): Edge[] => {
 
 export const convertLetExp = (exp : LetExp|LetrecExp , node : Node): Edge[] => {
     const multiBindingsGen = makeVarGen();
-    const internalBodyGen = makeVarGen();
+
     const parentToLetEdge = makeEdge(makeNodeRef(node.id),nodeMaker(exp),makeEdgeLabel(`${exp.tag}`));
     const letToBindings = makeEdge(makeNodeRef(parentToLetEdge.to.id),makeNodeDecl(bindingGen(`Bindings`),`[:]`),makeEdgeLabel(`bindings`));
     const letToBodys = makeEdge(makeNodeRef(parentToLetEdge.to.id),makeNodeDecl(bodyGen(`Body`),`[:]`),makeEdgeLabel(`body`));
-    const 
-
-
-}
-
-export const convertBind = (bind : Binding,node :Node) :Edge[] =>{
+    const allBindingArr = exp.bindings.reduce((acc : Edge[], cur) =>  
+    acc.concat(convertBind(cur,makeNodeRef( letToBindings.to.id),multiBindingsGen)),[]);
     
+    const allBodysArr = map(x=> (convertExp(x,makeNodeRef( letToBodys.to.id))),exp.body);
+
+    // const BindNodeArr = zip(exp.bindings,bindingsTree);
+    // const bindReduce = BindNodeArr.reduce((acc: Edge[],cur)=> (isAtomicExp(cur[0].val)?acc : acc.concat(convertExp(cur[0].val,makeNodeRef(cur[1])))),[]);
+    // return [parentToRandsEdge, AppRatorEdge].concat(AppRandsEdges).concat(finalRandsTree);
+
+    return [parentToLetEdge,letToBindings,letToBodys].concat(flatten(allBindingArr)).concat(flatten(allBodysArr));
+}
+
+export const convertBind = (bind : Binding, node :Node,generator: (v:string) => string) :Edge[] =>{
+    const fatherToBindingEdge = makeEdge(makeNodeRef(node.id),makeNodeDecl(generator('Binding'),'Binding'));
+    const fatherToVarDeclEdge = makeEdge(makeNodeRef(fatherToBindingEdge.to.id),makeNodeDecl(varDeclGen(`VarDecl`),`VarDecl(${bind.var.var})`),makeEdgeLabel(`var`));
+    const fatherToValEdge =makeEdge(makeNodeRef(fatherToBindingEdge.to.id),nodeMaker(bind.val),makeEdgeLabel(`val`));
+    
+    return  isAtomicExp(bind.val) ? [fatherToBindingEdge,fatherToVarDeclEdge,fatherToValEdge] :
+    [fatherToBindingEdge,fatherToVarDeclEdge,fatherToValEdge].concat(convertExp(bind.val,makeNodeRef(fatherToValEdge.to.id)));
 }
 
 
-export const nodeMaker = (exp :CExp) : Node =>
+export const nodeMaker = (exp :CExp) : NodeDecl =>
 isAtomicExp(exp) ? makeAtomicNode(exp):
 isCompoundExp(exp)? makeCompoundNode(exp):
 exp;
 
 
-export const makeAtomicNode = (exp: AtomicExp): Node =>
+export const makeAtomicNode = (exp: AtomicExp): NodeDecl =>
 isNumExp(exp)? makeNodeDecl(numGen(`${exp.tag}`),`${exp.tag}(${exp.val})`):
 isBoolExp(exp)? makeNodeDecl(boolGen(`${exp.tag}`),`${exp.tag}(${exp.val})`):
 isStrExp(exp)? makeNodeDecl(strGen(`${exp.tag}`),`${exp.tag}(${exp.val})`):
 isPrimOp(exp)? makeNodeDecl(primOpGen(`${exp.tag}`),`${exp.tag}(${exp.op})`):
 makeNodeDecl(varRefGen(`${exp.tag}`),`${exp.tag}(${exp.var})`);
 
-export const makeCompoundNode = (exp : CompoundExp): Node =>
+export const makeCompoundNode = (exp : CompoundExp): NodeDecl =>
 isIfExp(exp)? makeNodeDecl(IfExpGen(`${exp.tag}`),`${exp.tag}`):
 isAppExp(exp)? makeNodeDecl(AppExpGen(`${exp.tag}`),`${exp.tag}`):
 isProcExp(exp)? makeNodeDecl(procExpGen(`${exp.tag}`),`${exp.tag}`):
