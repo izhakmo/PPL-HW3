@@ -16,9 +16,9 @@ import {mapL4toMermaid,unparseMermaid, ParseProgramOrExp} from './marmaid'
 import { writeFile } from "fs";
 
 
-let mermaidAST: Result<Graph> = bind (bind(p ("(set! x 80)"), ParseProgramOrExp),mapL4toMermaid)
-// let mermaidAST: Result<Graph> = bind (bind(p ("(define my-list '(1 2))"), ParseProgramOrExp),mapL4toMermaid)
-// isOk(mermaidAST) ? console.log(JSON.stringify(mermaidAST.value, null, '\t')) : console.log(":(")
+// let mermaidAST: Result<Graph> = bind (bind(p ("(* (+ 1 2) (+ 3 2))"), ParseProgramOrExp),mapL4toMermaid)
+let mermaidAST: Result<Graph> = bind (bind(p ("(define my-list '(1 2))"), ParseProgramOrExp),mapL4toMermaid)
+isOk(mermaidAST) ? console.log(JSON.stringify(mermaidAST.value, null, '\t')) : console.log(":(")
 bind(mermaidAST, (graph: Graph) =>
             bind(unparseMermaid(graph),
                 (graphStr: string) => {

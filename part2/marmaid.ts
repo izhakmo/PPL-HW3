@@ -112,9 +112,8 @@ export const convertExp = (exp: Exp, node :Node, label? :string) : Edge[] =>
 
 
     export const convertSingleProcExp = (exp : ProcExp): Edge[] => {
-        const node = nodeMaker(exp);
-        const procParamsEdge = makeEdge(makeNodeRef(node.id),makeNodeDecl(paramsGen(`Params`),`:`),("|args|"));
-        const procBodyEdge = makeEdge(makeNodeRef(node.id),makeNodeDecl(bodyGen(`Body`),`:`),("|body|"));
+        const procParamsEdge = makeEdge(nodeMaker(exp),makeNodeDecl(paramsGen(`Params`),`:`),("|args|"));
+        const procBodyEdge = makeEdge(makeNodeRef(procParamsEdge.from.id),makeNodeDecl(bodyGen(`Body`),`:`),("|body|"));
         const paramsTree = map(x=> makeEdge(makeNodeRef(procParamsEdge.to.id),makeNodeDecl(varDeclGen(`VarDecl`),`varDecl(${x.var})`)),exp.args);
         const bodyTree = reduce( (acc: Edge[], curr: CExp) => acc.concat(convertExp(curr, makeNodeRef(procBodyEdge.to.id))), [], exp.body);
         return [procParamsEdge,procBodyEdge].concat(paramsTree).concat(flatten(bodyTree));
@@ -122,38 +121,21 @@ export const convertExp = (exp: Exp, node :Node, label? :string) : Edge[] =>
 
 export const convertAppExp = (exp :AppExp, node: Node, label? :string): Edge[] => {
     const parentToAppEdge = makeEdge(makeNodeRef(node.id),nodeMaker(exp),label);  
-    //const AppNode = makeNodeDecl("[AppExp]",AppExpGen("AppExp"));
-    // const ratorNode = nodeMaker(exp.rator);
     const parentToRandsEdge= makeEdge(makeNodeRef(parentToAppEdge.to.id),makeNodeDecl(randsGen('rands'),":"),("|rands|"));
-    // const randsNode = makeNodeDecl(randsGen('rands'),"[:]");
-
-    // const AppRatorEdge = makeEdge(makeNodeRef(parentToAppEdge.to.id),nodeMaker(exp.rator),("|rator|"));
-
-    
     const AppRatorEdge = convertExp(exp.rator,makeNodeRef(parentToAppEdge.to.id),"|rator|");
 
-
-    //const randsNodeList = map (x=> nodeMaker(x),exp.rands);
-    // const AppRandsEdges = map(x=> makeEdge(makeNodeRef(parentToRandsEdge.to.id),nodeMaker(x)),exp.rands);
-    // const expNodeArr = zip(exp.rands,AppRandsEdges);
-    // const finalRandsTree = expNodeArr.reduce((acc: Edge[],cur)=> (isAtomicExp(cur[0])?acc : acc.concat(convertExp(cur[0],makeNodeRef(cur[1].to.id)))),[]);
     const AppRandsEdges = reduce((acc: Edge[], curr: CExp) => acc.concat(convertExp(curr, makeNodeRef(parentToRandsEdge.to.id))), [],exp.rands);
     return [parentToAppEdge, parentToRandsEdge].concat(flatten(AppRandsEdges)).concat(flatten(AppRatorEdge));
 }
 
 export const convertSingleAppExp = (exp : AppExp) : Edge[] => {
-    const node = nodeMaker(exp);
-    const parentToRandsEdge= makeEdge(makeNodeRef(node.id),makeNodeDecl(randsGen('rands'),":"),("|rands|"));
-    const AppRatorEdge = convertExp(exp.rator,makeNodeRef(node.id),"|rator|");
+    const parentToRandsEdge= makeEdge(nodeMaker(exp),makeNodeDecl(randsGen('rands'),":"),("|rands|"));
+    const AppRatorEdge = convertExp(exp.rator,makeNodeRef(parentToRandsEdge.from.id),"|rator|");
     const AppRandsEdges = reduce((acc: Edge[], curr: CExp) => acc.concat(convertExp(curr, makeNodeRef(parentToRandsEdge.to.id))), [],exp.rands);
     return [parentToRandsEdge].concat(flatten(AppRatorEdge)).concat(flatten(AppRandsEdges));
-
-    return [];
 }
 
 export const convertIfExp = (exp : IfExp, node : Node, label? :string): Edge[] => {
-    // const ifnode = makeNodeDecl(exp.tag,IfExpGen(exp.tag));
-    // const testNode = makeNodeDecl(exp.test.tag,"Test");
     const parentToIfExp = makeEdge(makeNodeRef(node.id),nodeMaker(exp),label);
     const testEdge = makeEdge(makeNodeRef(node.id),makeNodeDecl(testGen("Test"),`${exp.test.tag}`),("|Test|") );
     const thenEdge = makeEdge(makeNodeRef( node.id),makeNodeDecl(thenGen("Then"),`${exp.then.tag}`),("|Then|"));
@@ -172,19 +154,10 @@ export const convertSingleIfExp = (exp : IfExp) : Edge[] =>{
 }
 
 export const convertProcExp = (exp : ProcExp, node: Node, label? :string): Edge[] => {
-    // const procNode = makeNodeDecl(procExpGen(exp.tag),`[${exp.tag}]`);
-    //params, bodys
-    // const paramsNode = makeNodeDecl(paramsGen("Params"),`[:]`);
-    // const bodyNode = makeNodeDecl(bodyGen("Body"),`[:]`);
     const parentToProc = makeEdge(makeNodeRef(node.id),nodeMaker(exp),label);
     const procParamsEdge = makeEdge(makeNodeRef(parentToProc.to.id),makeNodeDecl(paramsGen(`Params`),`:`),("|args|"));
     const procBodyEdge = makeEdge(makeNodeRef(parentToProc.to.id),makeNodeDecl(bodyGen(`Body`),`:`),("|body|"));
     const paramsTree = map(x=> makeEdge(makeNodeRef(procParamsEdge.to.id),makeNodeDecl(varDeclGen(`VarDecl`),`varDecl(${x.var})`)),exp.args);
-    //const bodyTree = map(x=> makeEdge(makeNodeRef(procBodyEdge.to.id),nodeMaker(exp)),exp.body);
-    //const expNodeArr = zip(exp.body,bodyTree);
-    //const finalBodyTree = expNodeArr.reduce((acc:Edge[],cur)=>
-    //((isAtomicExp(cur[0])) ? acc  :acc.concat(convertExp(cur[0],makeNodeRef( cur[1].to.id)))),[] ); //what sould i if a body is compound?????
-    //return [procParamsEdge,procBodyEdge].concat(paramsTree).concat(bodyTree).concat(finalBodyTree);
     const bodyTree = reduce( (acc: Edge[], curr: CExp) => acc.concat(convertExp(curr, makeNodeRef(procBodyEdge.to.id))), [], exp.body);
     return [parentToProc,procParamsEdge,procBodyEdge].concat(paramsTree).concat(flatten(bodyTree));
 }
@@ -199,32 +172,20 @@ export const singleConvertDefine = (exp : DefineExp) : Edge[] =>{
 }
 
 export const convertDefine = (exp: DefineExp, node: Node, label? :string): Edge[] => {
-    // const defineNode = makeNodeDecl(defineGen(`${exp.tag}`),`${exp.tag}`);
     const parentToDefEdge = makeEdge(makeNodeRef(node.id),makeNodeDecl(defineGen(`${exp.tag}`),`${exp.tag}`),label );
-    // const varNode = makeNodeDecl(varRefGen("Var"), `VarDecl(${exp.var.var})`);
     const defineToVarDeclEdge = makeEdge(makeNodeRef( parentToDefEdge.to.id),makeNodeDecl(varRefGen("Var"), `VarDecl(${exp.var.var})`),("|var|"));
-    // const defineRefNode = makeNodeRef(defineNode.id);
     const defineToValEdge = (isAtomicExp(exp.val)) ? [makeEdge(makeNodeRef( parentToDefEdge.to.id),makeAtomicNode(exp.val),("|val|"))]:
-    // makeEdge(makeNodeRef( parentToDefEdge.to.id),makeCompoundNode(exp.val));
     convertExp(exp.val,makeNodeRef(parentToDefEdge.to.id));
     return  [parentToDefEdge,defineToVarDeclEdge].concat(defineToValEdge);
 
-    // return isAtomicExp(exp.val)? [parentToDefEdge,defineToVarDeclEdge].concat(defineToValEdge):
-    // [parentToDefEdge,defineToVarDeclEdge,defineToValEdge].concat(convertExp(exp.val,makeNodeRef(defineToValEdge.to.id)));
 }
 
 export const convertLitExp = (exp: LitExp, node: Node,label? :string): Edge[]=>{
     const parentToLitEdge = [makeEdge(makeNodeRef(node.id),makeNodeDecl(defineGen(`${exp.tag}`),`${exp.tag}`),label )];
-    // const LitToValEdge =isCompoundSExp(exp.val)? makeEdge(makeNodeRef(parentToLitEdge.to.id),makeNodeDecl(SexpGen(exp.val),SExpValueEncoder(exp.val))):
-    // makeEdge(makeNodeRef(parentToLitEdge.to.id),makeNodeDecl(SexpGen(exp.val),SExpValueEncoder(exp.val)));    //TODO check id, label
-    // return isCompoundSExp(exp.val)? [parentToLitEdge,LitToValEdge].concat(convertSexpValue(exp.val,makeNodeRef( LitToValEdge.to.id))):
-    // [parentToLitEdge,LitToValEdge];
-
     return parentToLitEdge.concat(convertSexpValue(exp.val, makeNodeRef(parentToLitEdge[0].to.id),"|val|"));
 }
 
 export const convertSingleLitExp = (exp : LitExp) : Edge[] => {
-    // const parentToLitEdge = [makeEdge(nodeMaker(exp),makeNodeDecl(defineGen(`${exp.tag}`),`${exp.tag}`) )];
     return convertSexpValue(exp.val,nodeMaker(exp),"|val|");
 }
 
@@ -295,7 +256,6 @@ export const convertLetExp = (exp : LetExp|LetrecExp , node : Node, label? :stri
 export const convertSingleLetExp = (exp: LetExp|LetrecExp) : Edge[] => {
     const multiBindingsGen = makeVarGen();
 
-    // const parentToLetEdge = makeEdge(makeNodeRef(node.id),nodeMaker(exp),(`${exp.tag}`));
     const letToBindings = makeEdge(nodeMaker(exp),makeNodeDecl(bindingGen(`Bindings`),`:`),(`|bindings|`));
     const letToBodys = makeEdge(makeNodeRef(letToBindings.from.id),makeNodeDecl(bodyGen(`Body`),`:`),(`|body|`));
     const allBindingArr = exp.bindings.reduce((acc : Edge[], cur) =>  
@@ -362,7 +322,6 @@ export const nodeUnparse = (exp: Node): string =>
 
 
 export const edgeUnparse = (exp: Edge): Result<string> =>
-    // isEdgeLabel(exp.label) ? makeOk(`${nodeUnparse(exp.from)} --> ${nodeUnparse(exp.to)}`):
     isString(exp.label)? makeOk(`${nodeUnparse(exp.from)} -->${exp.label} ${nodeUnparse(exp.to)}`):
     makeOk(`${nodeUnparse(exp.from)} --> ${nodeUnparse(exp.to)}`);
 
@@ -376,26 +335,9 @@ export const graphConcat = (dir: string, content: string): Result<string> =>
 
 
 export const L4toMermaid = (concrete: string): Result<string> =>
-    // const parsedOrExpArr = 
     bind (bind( bind(p(concrete),ParseProgramOrExp),mapL4toMermaid),unparseMermaid);
-    // isOk(parsedOrExpArr)?( isArray(parsedOrExpArr.value)? parsedOrExpArr.value.reduce((acc,cur)=>
-    // acc.concat(),[]) ):
-    // parsedOrExpArr;
-    // bind(bind(parseL4(concrete),mapL4toMermaid),unparseMermaid);
-
 
 
 export const ParseProgramOrExp = (sexp :Sexp) : Result<Parsed> =>
     isArray(sexp) && (first(sexp)==="L4") ? parseL4Program(sexp) : 
     parseL4Exp(sexp);
-
-
-
-
-// export const L4toMermaid = (concrete: string): Result<string> => 
-// bind((bind(expOrProgram(concrete),mapL4toMermaid)),unparseMermaid);
-
-// export const expOrProgram = (x: string): Result<headers.Parsed> =>{
-//     const bl:Result<Boolean>= bind(p(x),(sexp:Sexp): Result<Boolean>=>isArray(sexp) ? (first(sexp)==="L4" && !isEmpty(rest(sexp)))? makeOk(true) : makeOk(false) : makeOk(false)  );// if not array cloud be a exp but not a program
-//     return bind (bl,(t:Boolean): Result<Parsed> => t===true ? headers.parseL4(x) : bind(p(x), headers.parseL4Exp));//if true program ,if false Exp or failure
-// }
