@@ -137,4 +137,29 @@ describe('L4 Normal Eval', () => {
                 (define g (lambda (x) 5))
                 (g (f 0)))`), evalNormalProgram)).to.deep.equal(makeOk(5));
     });
+    //infinite loop in applicative eval that will work on normal eval
+    it('infinite loop in applicative eval',() =>{
+        expect(bind(parseL4(`
+        (L4 (define f (lambda () (f)))
+            (define g (lambda (x) 42))
+            (g (f)))`),evalNormalProgram)).to.deep.equal(makeOk(42));
+    });
+    //normal eval will evaluate x twice while applicative will only once
+    it('eval x twice',() =>{
+        expect(bind(parseL4(`
+        (L4 (define x (+ 1 5))
+            (* x x))`),evalNormalProgram)).to.deep.equal(makeOk(36));
+    });
+    //app eval will print new line while normal only return 5
+    it('diffrent display',() => {
+        expect(bind(parseL4(`
+        (L4 (define x (lambda (y z) (display y) 5))
+            (define a (lambda () (newline)))
+            (+ (x 5 (a)) 42))`),evalNormalProgram)).to.deep.equal(makeOk(47));
+    });
+    it('let with env',() => {
+        expect(bind(parseL4(`
+        (L4 (define x 5) 
+            (let ((x (- x 2)) (y 3)) (+ x y)))`),evalNormalProgram)).to.deep.equal(makeOk(6));
+    })
 });
